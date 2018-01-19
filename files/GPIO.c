@@ -3,12 +3,75 @@
 
 void USART2_IRQHandler (void)
 {
-
+	uint8_t rcv;
+	static uint8_t rcv_cnt, rcv_buf[7];
+	
 	if (USART_GetITStatus(USART2, USART_IT_RXNE)) {
 		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
 	}
-		
-		
+	
+	rcv = USART_ReceiveData(USART2);
+	
+	if(rcv_cnt == 0){		//начало передачи
+		switch(rcv){
+			case 0xAE:	//запрос силовых
+			if(can_on & ps40) write(0x40); else write(0);
+			if(can_on & ps50) write(0x50); else write(0);
+			if(can_on & ps51) write(0x51); else write(0);
+			if(can_on & ps52) write(0x52); else write(0);
+			if(can_on & ps53) write(0x53); else write(0);
+			if(can_on & ps60) write(0x60); else write(0);
+			if(can_on & ps61) write(0x61); else write(0);
+			if(can_on & ps62) write(0x62); else write(0);
+			if(can_on & ps63) write(0x63); else write(0);
+			if(can_on & ps56) write(0x56); else write(0);
+			break;
+			case 0xAC:	//конфиг системы
+				rcv_buf[0] = 0xAC;
+				rcv_cnt = 6;
+			break;
+			case 0xAD:	//конфиг силового
+				rcv_buf[0] = 0xAD;
+				rcv_cnt = 3;
+			break;
+			case 0xAF:	//передача
+				
+			break;
+		} 
+	}else {	//не первый байт по UART
+			rcv_buf[rcv_cnt] = rcv;
+			rcv_cnt--;
+			
+			if(rcv_cnt == 0){		//если все байты приняты
+				if(rcv_buf[0] == 0xAC){
+					TxMessage.IDE = CAN_Id_Standard;
+					TxMessage.StdId=0x0AC;
+					TxMessage.DLC=6;
+					TxMessage.Data[0] = rcv_buf[6];		//
+					TxMessage.Data[1] = rcv_buf[5];
+					TxMessage.Data[2] = rcv_buf[4];
+					TxMessage.Data[3] = rcv_buf[3];		//
+					TxMessage.Data[4] = rcv_buf[2];
+					TxMessage.Data[5] = rcv_buf[1];
+					CAN_Transmit(CAN, &TxMessage);
+					if(CAN_GetLastErrorCode(CAN)){		//ошибка отправки
+
+					}
+				}
+				if(rcv_buf[0] == 0xAD){
+					TxMessage.IDE = CAN_Id_Standard;
+					TxMessage.StdId=0x0AD;
+					TxMessage.DLC=3;
+					TxMessage.Data[0] = rcv_buf[3];		//
+					TxMessage.Data[1] = rcv_buf[2];
+					TxMessage.Data[2] = rcv_buf[1];
+					CAN_Transmit(CAN, &TxMessage);
+					if(CAN_GetLastErrorCode(CAN)){		//ошибка отправки
+
+					}
+				}
+			}
+		}
 }
 
 void Init_SPI(){

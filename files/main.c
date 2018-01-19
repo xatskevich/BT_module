@@ -17,18 +17,22 @@ uint16_t light_mask;	//0 - осв отсеков
 						//13 - СГУ
 						//14 - двери слева
 uint16_t light_out;
-uint8_t is_idle, left, right;
-uint8_t butt, blink, can_on, pwm_count, can_error, light_buf,
-levels,	//0-3 - вода
+uint16_t can_on;	//ПС-02
+									//ПС-03
+									//ПС-01
+									//ПС-50
+									//ПС-51
+									//ПС-52
+									//ПС-53
+									//ПС-60
+									//ПС-61
+									//ПС-62
+									//ПС-63
+									//ПС-56
+									//ПС-40
+uint8_t pwm_count,
+levels;	//0-3 - вода
 		//4-7 - пена
-buttons, butt_mask;	//0 - СГУ
-					//1 - освещение слева
-					//2 - маяк
-					//3 - освещение отсеков
-					//4 - задний прожектор
-					//5 - освещение справа
-					//6 - строб
-					//7 - фара-искатель
 uint8_t b[16], level[8];
 
 communicate can;
@@ -43,7 +47,6 @@ USART_InitTypeDef USART_InitStructure;
 
 int main(void)
 {
-	uint32_t temp;
 
 	Init_IWDG();			//сторожевой
 
@@ -58,4 +61,9 @@ int main(void)
 
 
     }
+}
+
+void write(uint8_t msg){
+	while(USART_GetFlagStatus(USART1, USART_FLAG_TXE)==RESET);
+	USART_SendData(USART1, msg);
 }

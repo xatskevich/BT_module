@@ -37,14 +37,7 @@
 #define reset_foam_34		GPIO_ResetBits(GPIOA, GPIO_Pin_8)
 #define set_foam_1			GPIO_SetBits(GPIOA, GPIO_Pin_9)
 #define reset_foam_1		GPIO_ResetBits(GPIOA, GPIO_Pin_9)
-#define sgu_mask			1<<0
-#define left_mask			1<<1
-#define beam_mask			1<<2
-#define inside_mask			1<<3
-#define rear_mask			1<<4
-#define right_mask			1<<5
-#define strobe_mask			1<<6
-#define search_mask			1<<7
+
 #define sgu_light_mask		1<<13
 #define left_light_mask		1<<12
 #define beam_light_mask		1<<9
@@ -56,15 +49,28 @@
 #define left_door_light_mask		1<<14
 #define right_door_light_mask		1<<3
 #define left_stair_light_mask		1<<11
-#define right_stair_light_mask		1<<7
+#define right_stair_light_mask	1<<7
 #define left_roll_light_mask		1<<10
 #define right_roll_light_mask		1<<6
 #define rear_roll_light_mask		1<<8
 
-#define config_address 0x08007800
+#define ps01	1<<2
+#define ps02	1<<0
+#define ps03	1<<1
+#define ps50	1<<3
+#define ps51	1<<4
+#define ps52	1<<5
+#define ps53	1<<6
+#define ps60	1<<7
+#define ps61	1<<8
+#define ps62	1<<9
+#define ps63	1<<10
+#define ps56	1<<11
+#define ps40	1<<12
 
-void flash_erase(void);
-void flash_prog_all(void);
+
+void write(uint8_t msg);
+
 
 extern uint16_t light_mask;	//0 - осв отсеков
 						//1 - фара-искатель
@@ -82,21 +88,26 @@ extern uint16_t light_mask;	//0 - осв отсеков
 						//13 - СГУ
 						//14 - двери слева
 extern uint16_t light_out;
-extern uint8_t is_idle, left, right;
-extern uint8_t butt, blink, can_on, pwm_count, can_error, light_buf,
-levels,	//0-3 - вода
-		//4-7 - пена
-buttons, butt_mask;	//0 - СГУ
-					//1 - освещение слева
-					//2 - маяк
-					//3 - освещение отсеков
-					//4 - задний прожектор
-					//5 - освещение справа
-					//6 - строб
-					//7 - фара-искатель
+extern uint16_t can_on;
+extern uint8_t pwm_count, 
+levels;	//0-3 - вода
+				//4-7 - пена
 extern uint8_t b[16], level[8];
 
 typedef struct {
+	uint8_t		motor1;
+	uint8_t		motor2;
+	uint8_t		motor3;
+	uint8_t 	level1;
+	uint8_t		level2;
+	uint8_t		level3;
+	uint8_t		level4;
+	uint8_t		pressure1;
+	uint8_t		pressure2;
+	uint8_t		pressure3;
+	uint8_t		pressure4;
+	uint16_t	revolution1;
+	uint16_t	revolution2;
 	uint8_t		roll_rear;
 	uint8_t		roll_left;
 	uint8_t		roll_right;

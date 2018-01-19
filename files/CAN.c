@@ -1,24 +1,9 @@
 
 #include "main.h"
-//#include "CAN.h"
 
 void CEC_CAN_IRQHandler (void)
 {
-	uint8_t water, foam, tmp;
-	static uint8_t door_buf,	//0 - ПЛ
-								//1 - ЗЛ
-								//2 - ПП
-								//3 - ЗП
-								//7 - задняя роллета
-								//8 - задняя ступень
-	roll_buf, stair_buf;	//0 - Л1
-							//1 - Л2
-							//2 - Л3
-							//3 - Л4
-							//4 - П1
-							//5 - П2
-							//6 - П3
-							//7 - П4
+
 
 	if (CAN_GetITStatus(CAN,CAN_IT_FMP0))
 	{
@@ -27,115 +12,127 @@ void CEC_CAN_IRQHandler (void)
 	}
 	CanRxMsg msg_buf;
 	CAN_Receive(CAN, CAN_FIFO0, &msg_buf);
-	can_on = 1;
 
-	switch(msg_buf.FMI){
-	case 0:		//0x018
-		water = msg_buf.Data[0];
-		foam = msg_buf.Data[1];
-		levels = 0;
-		if(water > 90){
-			levels |= 0xF;	//полный бак
-		} else if(water > 65){
-			levels |= 7;
-		} else if(water > 40){
-			levels |= 3;
-		} else if(water >12){
-			levels |= 1;
-		} else {
-			if(blink) levels |= 1;
-		}
+	light_mask ^= rear_light_mask;
 
-		if(foam > 90){
-			levels |= 0xF0;
-		} else if(foam > 65){
-			levels |= 0x70;
-		} else if(foam > 40){
-			levels |= 0x30;
-		} else if(foam > 12){
-			levels |= 0x10;
-		} else {
-			if(blink) levels |= 0x10;
-		}
-		break;
-	case 1:		//0x028
-		tmp = 0;
-		if ((msg_buf.Data[2] & 0x3) == 1) tmp |= 1; //освещение слева
-		if ((msg_buf.Data[2] & 0xC) == 4) tmp |= 2; //освещение справа
-		if (butt_mask & left_mask) {
-			if ((tmp & 1) ^ (light_buf & 1)) { //если освещение слева переключили с пульта
-				if (tmp & 1) { //включено
-					buttons |= left_mask;
-					light_mask |= left_light_mask;
-				} else { //выключено
-					buttons &= ~(left_mask);
-					light_mask &= ~(left_light_mask);
-				}
-			}
-		}
-		if (butt_mask & right_mask) {
-			if ((tmp & 2) ^ (light_buf & 2)) { //если освещение справа переключили с пульта
-				if (tmp & 2) { //включено
-					buttons |= right_mask;
-					light_mask |= right_light_mask;
-				} else { //выключено
-					buttons &= ~(right_mask);
-					light_mask &= ~(right_light_mask);
-				}
-			}
-		}
-		light_buf = tmp;
-		break;
-	case 2:		//0x040
-		if((msg_buf.Data[0] & 0x3) == 1) door_buf |= 1;		//ЛП дверь открыта
-		if((msg_buf.Data[0] & 0xC) == 4) door_buf |= 2;		//ЛЗ дверь открыта
-		if((msg_buf.Data[0] & 0x3) == 0) door_buf &= ~1;	//ЛП дверь закрыта
-		if((msg_buf.Data[0] & 0xC) == 0) door_buf &= ~2;	//ЛЗ дверь закрыта
-		if(door_buf & 3) light_mask |= left_door_light_mask;
-		else light_mask &= ~(left_door_light_mask);
-
-		if((msg_buf.Data[0] & 0x30) == 0x10) door_buf |= 4;		//ПП дверь открыта
-		if((msg_buf.Data[0] & 0xC0) == 0x40) door_buf |= 8;		//ПЗ дверь открыта
-		if((msg_buf.Data[0] & 0x30) == 0) door_buf &= ~4;		//ПП дверь закрыта
-		if((msg_buf.Data[0] & 0xC0) == 0) door_buf &= ~8;		//ПЗ дверь закрыта
-		if(door_buf & 0xC) light_mask |= right_door_light_mask;
-		else light_mask &= ~(right_door_light_mask);
-		break;
-	case 3:		//0x0AC
-		
-		break;
-	case 4: 	//0x050
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 0);
-		break;
-	case 5:		//0x051
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 1);
-		break;
-	case 6:		//0x052
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 2);
-		break;
-	case 7:		//0x053
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 3);
-		break;
-	case 8:		//0x060
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 4);
-		break;
-	case 9:		//0x061
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 5);
-		break;
-	case 10:	//0x062
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 6);
-		break;
-	case 11:	//0x063
-		roll_inputs(msg_buf.Data[0], &roll_buf, &stair_buf, 7);
-		break;
-	case 12:	//0x056
-		if((msg_buf.Data[0] & 0x3) == 1) door_buf |= 0x40;	//задняя роллета открыта
-		if((msg_buf.Data[0] & 0xC) == 4) door_buf |= 0x80;	//задняя ступень открыта
-		if((msg_buf.Data[0] & 0x3) == 0) door_buf &= ~0x40;	//задняя роллета закрыта
-		if((msg_buf.Data[0] & 0xC) == 0) door_buf &= ~0x80;	//задняя ступень закрыта
-		if(door_buf & 0xC0) light_mask |= rear_roll_light_mask;
-		else light_mask &= ~(rear_roll_light_mask);
-		break;
+	switch(msg_buf.StdId){
+	case 0x010:		
+		can.motor1 = msg_buf.Data[0];
+		can.motor2 = msg_buf.Data[1];
+		can_on |= ps01;		//индикация наличия пульта
+	break;
+	case 0x011:	
+		can.motor3 = msg_buf.Data[0];
+		can_on |= ps03;		//индикация наличия модуля подключения
+	break;
+	case 0x018:		
+		can.level1 = msg_buf.Data[0];
+		can.level2 = msg_buf.Data[1];
+		can.level3 = msg_buf.Data[2];
+		can.level4 = msg_buf.Data[3];
+	break;
+	case 0x019:		
+		can.pressure1 = msg_buf.Data[0];
+		can.pressure2 = msg_buf.Data[1];
+		can.pressure3 = msg_buf.Data[2];
+		can.pressure4 = msg_buf.Data[3];
+	break;
+	case 0x01A: 	
+		can.revolution1 = msg_buf.Data[1]<<8;
+		can.revolution1 |= msg_buf.Data[0];
+		can.revolution2 = msg_buf.Data[3]<<8;
+		can.revolution2 |= msg_buf.Data[2];
+	break;
+	case 0x028:		
+		can.light_comm = msg_buf.Data[2];
+		can.light_comm_rear = msg_buf.Data[1];
+		can.light_comm_front = msg_buf.Data[0];
+	break;
+	case 0x040:		
+		can.doors = msg_buf.Data[0];
+	can_on |= ps40;		//индикация наличия
+	break;
+	case 0x050:		
+		can.roll_left |= 0x3;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_left &= ~0x3;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_left &= ~0x2;
+		can.stair_left |= 0x3;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_left &= ~0x3;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_left &= ~0x2;
+		can_on |= ps50;		//индикация наличия
+	break;
+	case 0x051:		
+		can.roll_left |= 0xC;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_left &= ~0xC;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_left &= ~0x8;
+		can.stair_left |= 0xC;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_left &= ~0xC;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_left &= ~0x8;
+		can_on |= ps51;		//индикация наличия
+	break;
+	case 0x052:		
+		can.roll_left |= 0x30;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_left &= ~0x30;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_left &= ~0x20;
+		can.stair_left |= 0x30;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_left &= ~0x30;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_left &= ~0x20;
+		can_on |= ps52;		//индикация наличия
+	break;
+	case 0x053:	
+		can.roll_left |= 0xC0;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_left &= ~0xC0;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_left &= ~0x80;
+		can.stair_left |= 0xC0;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_left &= ~0xC0;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_left &= ~0x80;
+		can_on |= ps53;		//индикация наличия
+	break;
+	case 0x060:	
+		can.roll_right |= 0x3;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_right &= ~0x3;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_right &= ~0x2;
+		can.stair_right |= 0x3;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_right &= ~0x3;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_right &= ~0x2;
+		can_on |= ps60;		//индикация наличия
+	break;
+	case 0x061:	
+		can.roll_right |= 0xC;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_right &= ~0xC;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_right &= ~0x8;
+		can.stair_right |= 0xC;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_right &= ~0xC;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_right &= ~0x8;
+		can_on |= ps61;		//индикация наличия
+	break;
+	case 0x062:	
+		can.roll_right |= 0x30;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_right &= ~0x30;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_right &= ~0x20;
+		can.stair_right |= 0x30;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_right &= ~0x30;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_right &= ~0x20;
+		can_on |= ps62;		//индикация наличия
+	break;
+	case 0x063:	
+		can.roll_right |= 0xC0;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_right &= ~0xC0;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_right &= ~0x80;
+		can.stair_right |= 0xC0;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_right &= ~0xC0;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_right &= ~0x80;
+		can_on |= ps63;		//индикация наличия
+	break;
+	case 0x056:	
+		can.roll_rear |= 0x3;
+		if((msg_buf.Data[0] & 0x3) == 0) can.roll_rear &= ~0x3;
+		if((msg_buf.Data[0] & 0x3) == 1) can.roll_rear &= ~0x2;
+		can.stair_rear |= 0x3;
+		if((msg_buf.Data[0] & 0x3) == 0) can.stair_rear &= ~0x3;
+		if((msg_buf.Data[0] & 0x3) == 1) can.stair_rear &= ~0x2;
+	break;
+	
 	}
 
 
